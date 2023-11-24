@@ -410,6 +410,10 @@ instructions! {
         Call(Index<'a>) : [0x10] : "call",
         CallIndirect(Box<CallIndirect<'a>>) : [0x11] : "call_indirect",
 
+        // branch-hinting proposal
+        IfBranchHint(Box<BlockType<'a>>) : [0x04] : "if",
+        BrIfBranchHint(Index<'a>) : [0x0d] : "br_if",
+
         // tail-call proposal
         ReturnCall(Index<'a>) : [0x12] : "return_call",
         ReturnCallIndirect(Box<CallIndirect<'a>>) : [0x13] : "return_call_indirect",

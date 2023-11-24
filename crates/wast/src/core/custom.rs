@@ -11,6 +11,8 @@ pub enum Custom<'a> {
     Producers(Producers<'a>),
     /// The `dylink.0` custom section
     Dylink0(Dylink0<'a>),
+    /// The `metadata.code.branch_hint` custom section
+    BranchHint(BranchHint<'a>),
 }
 
 impl Custom<'_> {
@@ -20,6 +22,7 @@ impl Custom<'_> {
             Custom::Raw(s) => s.place,
             Custom::Producers(_) => CustomPlace::AfterLast,
             Custom::Dylink0(_) => CustomPlace::BeforeFirst,
+            Custom::BranchHint(_) => CustomPlace::BeforeFirst,
         }
     }
 
@@ -29,6 +32,7 @@ impl Custom<'_> {
             Custom::Raw(s) => s.name,
             Custom::Producers(_) => "producers",
             Custom::Dylink0(_) => "dylink.0",
+            Custom::BranchHint(_) => "metadata.code.branch_hint",
         }
     }
 }
@@ -39,6 +43,9 @@ impl<'a> Parse<'a> for Custom<'a> {
             Ok(Custom::Producers(parser.parse()?))
         } else if parser.peek::<annotation::dylink_0>()? {
             Ok(Custom::Dylink0(parser.parse()?))
+        }
+        else if parser.peek::<annotation::branch_hint>()? {
+            Ok(Custom::BranchHint(parser.parse()?))
         } else {
             Ok(Custom::Raw(parser.parse()?))
         }
@@ -389,5 +396,64 @@ impl Dylink0Subsection<'_> {
             ExportInfo(..) => 3,
             ImportInfo(..) => 4,
         }
+    }
+}
+
+
+/// A `metadata.code.branch_hint` custom section
+#[allow(missing_docs)]
+#[derive(Debug)]
+pub struct BranchHint<'a> {
+    // Number of function with branch hints.
+    pub functionCount: u32,
+
+    // Contains a vector per function with branch hints
+    // This vector contains the branch hints
+    pub subsections: Vec<&'a FunctionBranchHint<'a>>,
+}
+
+/// Possible subsections of the `metadata.code.branch_hint` custom section
+#[derive(Debug)]
+#[allow(missing_docs)]
+pub struct FunctionBranchHint<'a> {
+    // Function index
+    pub functionOffset: u32,
+    // Hints count or this function
+    pub hintCounts: u32,
+    // Vector of branch hint for this function
+    pub data: Vec<&'a BranchHintStruct>,
+}
+
+// Structure to encode a branch hint
+#[derive(Debug)]
+#[allow(missing_docs)]
+pub struct BranchHintStruct {
+    // Branch offset from the beginning of the function
+    pub branchOffset: u32,
+    // Reserved byte with the value `1`
+    pub reservedByte: u8,
+    // Value of this branch hint:
+    // 1 -> likely not taken
+    // 0 -> likely taken
+    pub branchHintValue: u8,
+}
+
+// TODO: implementation
+impl<'a> Parse<'a> for BranchHint<'a> {
+    fn parse(parser: Parser<'a>) -> Result<Self> {
+        parser.parse::<annotation::branch_hint>()?.0;
+        let mut ret = BranchHint {
+            subsections: Vec::new(),
+        };
+        while !parser.is_empty() {
+            parser.parens(|p| ret.parse_next(p))?;
+        }
+        Ok(ret)
+    }
+}
+
+//TODO: implementation
+impl<'a> BranchHint<'a> {
+    fn parse_next(&mut self, parser: Parser<'a>) -> Result<()> {
     }
 }
