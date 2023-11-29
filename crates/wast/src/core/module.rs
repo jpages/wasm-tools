@@ -209,6 +209,7 @@ impl<'a> Parse<'a> for ModuleField<'a> {
         if parser.peek::<annotation::custom>()?
             || parser.peek::<annotation::producers>()?
             || parser.peek::<annotation::dylink_0>()?
+            || parser.peek::<annotation::branch_hint>()?
         {
             return Ok(ModuleField::Custom(parser.parse()?));
         }

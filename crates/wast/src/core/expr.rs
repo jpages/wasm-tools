@@ -91,6 +91,7 @@ enum Level<'a> {
     IfArm,
 }
 
+//TODO: branch hint should be associated with an If
 /// Possible states of "what is currently being parsed?" in an `if` expression.
 enum If<'a> {
     /// Only the `if` instructoin has been parsed, next thing to parse is the
@@ -409,10 +410,6 @@ instructions! {
         Return : [0x0f] : "return",
         Call(Index<'a>) : [0x10] : "call",
         CallIndirect(Box<CallIndirect<'a>>) : [0x11] : "call_indirect",
-
-        // branch-hinting proposal
-        IfBranchHint(Box<BlockType<'a>>) : [0x04] : "if",
-        BrIfBranchHint(Index<'a>) : [0x0d] : "br_if",
 
         // tail-call proposal
         ReturnCall(Index<'a>) : [0x12] : "return_call",
@@ -1137,6 +1134,27 @@ impl<'a> Parse<'a> for TryTable<'a> {
         }
 
         Ok(TryTable { block, catches })
+    }
+}
+
+/// Extra data associated with the `br_if` instruction
+#[derive(Debug)]
+#[allow(missing_docs)]
+pub struct BrIf<'a> {
+    /// The label to branch to.
+    pub label: Index<'a>,
+
+    // If any, a branch hint value
+    pub branch_hint: Option<BranchHintAnnotation>,
+}
+
+//TODO: if there is a hint, returns the other instruction?
+impl<'a> Parse<'a> for BrIf<'a> {
+    fn parse(parser: Parser<'a>) -> Result<Self> {
+        Ok(BrIf {
+            branch_hint: parser.parse()?,
+            label: parser.parse()?,
+        })
     }
 }
 

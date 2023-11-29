@@ -299,6 +299,32 @@ impl<'a> Parse<'a> for Option<NameAnnotation<'a>> {
     }
 }
 
+/// An `@code_annotation.branch_hint` in the code, associated with a If or BrIf
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct BranchHintAnnotation {
+    /// The value of this branch hint
+    pub value: u32,
+}
+
+impl Parse<'_> for BranchHintAnnotation {
+    fn parse(parser: Parser) -> Result<Self> {
+        println!("We have a BranchHintAnnotation here\n");
+        parser.parse::<annotation::branch_hint>()?;
+        let value = parser.parse()?;
+        Ok(BranchHintAnnotation { value })
+    }
+}
+
+impl Parse<'_> for Option<BranchHintAnnotation> {
+    fn parse(parser: Parser) -> Result<Self> {
+        Ok(if parser.peek2::<annotation::branch_hint>()? {
+            Some(parser.parens(|p| p.parse())?)
+        } else {
+            None
+        })
+    }
+}
+
 macro_rules! integers {
     ($($i:ident($u:ident))*) => ($(
         impl<'a> Parse<'a> for $i {

@@ -76,6 +76,7 @@ pub fn encode(
     if !names.is_empty() {
         e.section(0, &("name", names));
     }
+    //TODO: insert brach hint section here
     e.custom_sections(AfterLast);
 
     return e.wasm;
@@ -1096,6 +1097,7 @@ impl Encode for Custom<'_> {
             Custom::Raw(r) => r.encode(e),
             Custom::Producers(p) => p.encode(e),
             Custom::Dylink0(p) => p.encode(e),
+            Custom::BranchHint(p) => p.encode(e),
         }
     }
 }
@@ -1143,6 +1145,26 @@ impl Encode for Dylink0Subsection<'_> {
             Dylink0Subsection::ExportInfo(list) => list.encode(e),
             Dylink0Subsection::ImportInfo(list) => list.encode(e),
         }
+    }
+}
+
+// TODO
+impl Encode for BranchHint<'_> {
+    fn encode(&self, e: &mut Vec<u8>) {
+        for section in self.subsections.iter() {
+            let mut tmp = Vec::new();
+            section.encode(&mut tmp);
+            tmp.encode(e);
+        }
+    }
+}
+
+impl Encode for FunctionBranchHint<'_> {
+    fn encode(&self, e: &mut Vec<u8>) {
+        e.push(self.functionOffset.try_into().unwrap());
+        e.push(self.hintCounts.try_into().unwrap());
+        //TODO
+        //e.push(self.data);
     }
 }
 

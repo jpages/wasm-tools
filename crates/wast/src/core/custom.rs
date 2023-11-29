@@ -443,17 +443,23 @@ impl<'a> Parse<'a> for BranchHint<'a> {
     fn parse(parser: Parser<'a>) -> Result<Self> {
         parser.parse::<annotation::branch_hint>()?.0;
         let mut ret = BranchHint {
+            functionCount: 0,
             subsections: Vec::new(),
         };
-        while !parser.is_empty() {
-            parser.parens(|p| ret.parse_next(p))?;
-        }
+        // while !parser.is_empty() {
+        //     parser.parens(|p| ret.parse_next(p))?;
+        // }
         Ok(ret)
     }
 }
 
-//TODO: implementation
-impl<'a> BranchHint<'a> {
-    fn parse_next(&mut self, parser: Parser<'a>) -> Result<()> {
-    }
-}
+//TODO: implementation of the full section parsing
+// impl<'a> BranchHint<'a> {
+//     fn parse_next(&mut self, parser: Parser<'a>) -> Result<()> {
+//         let mut ret = BranchHint {
+//             functionCount: 0,
+//             subsections: Vec::new(),
+//         };
+//         Ok()
+//     }
+// }
