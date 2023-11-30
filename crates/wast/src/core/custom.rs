@@ -405,7 +405,7 @@ impl Dylink0Subsection<'_> {
 #[derive(Debug)]
 pub struct BranchHint<'a> {
     // Number of function with branch hints.
-    pub functionCount: u32,
+    pub function_count: u32,
 
     // Contains a vector per function with branch hints
     // This vector contains the branch hints
@@ -417,9 +417,9 @@ pub struct BranchHint<'a> {
 #[allow(missing_docs)]
 pub struct FunctionBranchHint<'a> {
     // Function index
-    pub functionOffset: u32,
+    pub function_offset: u32,
     // Hints count or this function
-    pub hintCounts: u32,
+    pub hint_counts: u32,
     // Vector of branch hint for this function
     pub data: Vec<&'a BranchHintStruct>,
 }
@@ -429,13 +429,13 @@ pub struct FunctionBranchHint<'a> {
 #[allow(missing_docs)]
 pub struct BranchHintStruct {
     // Branch offset from the beginning of the function
-    pub branchOffset: u32,
+    pub branch_offset: u32,
     // Reserved byte with the value `1`
-    pub reservedByte: u8,
+    pub reserved_byte: u8,
     // Value of this branch hint:
     // 1 -> likely not taken
     // 0 -> likely taken
-    pub branchHintValue: u8,
+    pub branch_hint_value: u8,
 }
 
 // TODO: implementation
@@ -443,7 +443,7 @@ impl<'a> Parse<'a> for BranchHint<'a> {
     fn parse(parser: Parser<'a>) -> Result<Self> {
         parser.parse::<annotation::branch_hint>()?.0;
         let mut ret = BranchHint {
-            functionCount: 0,
+            function_count: 0,
             subsections: Vec::new(),
         };
         // while !parser.is_empty() {
@@ -457,7 +457,7 @@ impl<'a> Parse<'a> for BranchHint<'a> {
 // impl<'a> BranchHint<'a> {
 //     fn parse_next(&mut self, parser: Parser<'a>) -> Result<()> {
 //         let mut ret = BranchHint {
-//             functionCount: 0,
+//             function_count: 0,
 //             subsections: Vec::new(),
 //         };
 //         Ok()

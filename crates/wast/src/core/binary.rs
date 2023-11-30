@@ -1148,7 +1148,6 @@ impl Encode for Dylink0Subsection<'_> {
     }
 }
 
-// TODO
 impl Encode for BranchHint<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         for section in self.subsections.iter() {
@@ -1161,10 +1160,22 @@ impl Encode for BranchHint<'_> {
 
 impl Encode for FunctionBranchHint<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
-        e.push(self.functionOffset.try_into().unwrap());
-        e.push(self.hintCounts.try_into().unwrap());
-        //TODO
-        //e.push(self.data);
+        e.push(self.function_offset.try_into().unwrap());
+        e.push(self.hint_counts.try_into().unwrap());
+        // Encode all branch hints for this function
+        for hint in self.data.iter() {
+            let mut tmp = Vec::new();
+            hint.encode(&mut tmp);
+            tmp.encode(e);
+        }
+    }
+}
+
+impl Encode for BranchHintStruct {
+    fn encode(&self, e: &mut Vec<u8>) {
+        e.push(self.branch_offset.try_into().unwrap());
+        e.push(self.reserved_byte);
+        e.push(self.branch_hint_value);
     }
 }
 

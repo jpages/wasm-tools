@@ -1148,7 +1148,6 @@ pub struct BrIf<'a> {
     pub branch_hint: Option<BranchHintAnnotation>,
 }
 
-//TODO: if there is a hint, returns the other instruction?
 impl<'a> Parse<'a> for BrIf<'a> {
     fn parse(parser: Parser<'a>) -> Result<Self> {
         Ok(BrIf {
