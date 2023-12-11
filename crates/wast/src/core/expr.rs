@@ -3,7 +3,10 @@ use crate::encode::Encode;
 use crate::kw;
 use crate::parser::{Cursor, Parse, Parser, Result};
 use crate::token::*;
+use crate::annotation;
+use core::panic;
 use std::mem;
+
 
 /// An expression, or a list of instructions, in the WebAssembly text format.
 ///
@@ -146,6 +149,13 @@ impl<'a> ExpressionParser<'a> {
                     if self.handle_if_lparen(parser)? {
                         continue;
                     }
+
+                    //TODO: just a test to see if it's the right place to parse this annotation
+                    if parser.peek::<annotation::branch_hint>()? {
+                        println!("We are parsing a branch hint annotation");
+                        parser.parse::<BranchHintAnnotation>()?;
+                    }
+
                     match parser.parse()? {
                         // If block/loop show up then we just need to be sure to
                         // push an `end` instruction whenever the `)` token is
@@ -1111,7 +1121,7 @@ impl<'a> Parse<'a> for TryTable<'a> {
                 || parser.peek2::<kw::catch_all>()?
                 || parser.peek2::<kw::catch_all_ref>()?)
         {
-            catches.push(parser.parens(|p| {
+            catches.push(parser.parens(|p: Parser<'_>| {
                 let kind = if parser.peek::<kw::catch_ref>()? {
                     p.parse::<kw::catch_ref>()?;
                     TryTableCatchKind::CatchRef(p.parse()?)
@@ -1143,19 +1153,81 @@ impl<'a> Parse<'a> for TryTable<'a> {
 pub struct BrIf<'a> {
     /// The label to branch to.
     pub label: Index<'a>,
-
-    // If any, a branch hint value
-    pub branch_hint: Option<BranchHintAnnotation>,
 }
 
-impl<'a> Parse<'a> for BrIf<'a> {
+/// An `@code_annotation.branch_hint` in the code, associated with a If or BrIf
+#[derive(Debug)]
+pub struct BranchHintAnnotation<'a> {
+    /// The value of this branch hint
+    pub value: u32,
+
+    /// Associated Instruction, can be a if or a br_if
+    pub next_instruction: Instruction<'a>,
+}
+
+impl<'a> Parse<'a> for BranchHintAnnotation<'a> {
     fn parse(parser: Parser<'a>) -> Result<Self> {
-        Ok(BrIf {
-            branch_hint: parser.parse()?,
-            label: parser.parse()?,
-        })
+        parser.parse::<annotation::branch_hint>()?;
+
+        // TODO: this should be a string
+        let value = parser.parse::<u32>()?;
+        println!("{} ", value);
+        if value >= 2 {
+            panic!("Invalid value for Branch Hint.");
+        }
+
+        // Parse the right paren
+        parser.step(|cursor| {
+            Ok(match cursor.rparen()? {
+                Some(rest) => (Paren::Left, rest),
+                None => match cursor.rparen()? {
+                    Some(rest) => (Paren::Right, rest),
+                    None => (Paren::None, cursor),
+                },
+            })
+        });
+
+        // Determine if the following instruction is a `if` or `br_if`
+        parser.peek::<Instruction::BrIf>()?;
+        let next_instruction = parser.parse::<Instruction>()?;
+        Ok(BranchHintAnnotation {value, next_instruction })
     }
 }
+
+// impl<'a> Parse<'a> for Option<BranchHintAnnotation<'a>> {
+//     fn parse(parser: Parser<'a>) -> Result<Self> {
+//         Ok(if parser.peek2::<annotation::branch_hint>()? {
+//             Some(parser.parens(|p| p.parse())?)
+//         } else {
+//             None
+//         })
+//     }
+// }
+    
+    
+// impl<'a> Parse<'a> for BranchHintAnnotation<'a> {
+//     fn parse(parser: Parser<'a>) -> Result<Self> {
+//         println!("We have a BranchHintAnnotation here\n");
+//         parser.parse::<annotation::branch_hint>()?;
+//         let value = parser.parse()?;
+
+//         // Determine if the following instruction is a `if` or `br_if`
+//         let next_instruction = parser.parse::<Instruction>()?;
+//         // match next_instruction {
+//         //     Instruction::BrIf(_) => {
+//         //         println!("BranchHint annotation with BrIf");
+//         //     }
+//         //     Instruction::If(_) => {
+//         //         println!("BranchHint annotation with If");
+//         //     },
+//         //     _ => {
+//         //         // This should not be possible
+//         //         println!("Return an error because this should not happen");
+//         //     }
+//         // Ok(BranchHintAnnotation { value, next_instruction })
+//     }
+// }
+
 
 #[derive(Debug)]
 #[allow(missing_docs)]

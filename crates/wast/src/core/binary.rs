@@ -76,7 +76,8 @@ pub fn encode(
     if !names.is_empty() {
         e.section(0, &("name", names));
     }
-    //TODO: insert brach hint section here
+    //TODO: insert branch hint section here
+    let branch_hint_section = build_branch_hints(&funcs);
     e.custom_sections(AfterLast);
 
     return e.wasm;
@@ -626,6 +627,10 @@ impl Encode for Data<'_> {
     }
 }
 
+//TODO: handle the case of branch hints here.
+// - Iterate over the instructions and get the hints
+// - Create the vector of branch hints
+// - Return it and store it somewhere
 impl Encode for Func<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         assert!(self.exports.names.is_empty());
@@ -1033,6 +1038,16 @@ impl Encode for Names<'_> {
         }
     }
 }
+
+fn build_branch_hints(funcs: &[&crate::core::Func<'_>]) {
+    for func in funcs.iter() {
+        let (expr, locals) = match &func.kind {
+            FuncKind::Inline { expression, locals } => (expression, locals),
+            _ => panic!("should only have inline functions in emission"),
+        };
+    }
+}
+
 
 impl Encode for Id<'_> {
     fn encode(&self, dst: &mut Vec<u8>) {
