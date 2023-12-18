@@ -153,7 +153,9 @@ impl<'a> ExpressionParser<'a> {
                     //TODO: just a test to see if it's the right place to parse this annotation
                     if parser.peek::<annotation::branch_hint>()? {
                         println!("We are parsing a branch hint annotation");
-                        parser.parse::<BranchHintAnnotation>()?;
+                        let branch_hint = parser.parse::<BranchHintAnnotation>()?; 
+                        self.instrs.push(Instruction::BranchHintAnnotation(branch_hint));
+                        continue;
                     }
 
                     match parser.parse()? {
@@ -420,6 +422,9 @@ instructions! {
         Return : [0x0f] : "return",
         Call(Index<'a>) : [0x10] : "call",
         CallIndirect(Box<CallIndirect<'a>>) : [0x11] : "call_indirect",
+
+        // Branch hinting proposal
+        BranchHintAnnotation(BranchHintAnnotation) : [] : "branch_hint",
 
         // tail-call proposal
         ReturnCall(Index<'a>) : [0x12] : "return_call",
@@ -1155,28 +1160,25 @@ pub struct BrIf<'a> {
     pub label: Index<'a>,
 }
 
-/// An `@code_annotation.branch_hint` in the code, associated with a If or BrIf
+/// A `@metadata.code.branch_hint` in the code, associated with a If or BrIf
 #[derive(Debug)]
-pub struct BranchHintAnnotation<'a> {
+pub struct BranchHintAnnotation {
     /// The value of this branch hint
     pub value: u32,
-
-    /// Associated Instruction, can be a if or a br_if
-    pub next_instruction: Instruction<'a>,
 }
 
-impl<'a> Parse<'a> for BranchHintAnnotation<'a> {
-    fn parse(parser: Parser<'a>) -> Result<Self> {
+impl Parse<'_> for BranchHintAnnotation {
+    fn parse(parser: Parser<'_>) -> Result<Self> {
         parser.parse::<annotation::branch_hint>()?;
 
         // TODO: this should be a string
-        let value = parser.parse::<u32>()?;
-        println!("{} ", value);
-        if value >= 2 {
+        let val = parser.parse::<u32>()?;
+        println!("parsed value : {} ", val);
+        if val >= 2 {
             panic!("Invalid value for Branch Hint.");
         }
 
-        // Parse the right paren
+        // Parse and consume the right paren
         parser.step(|cursor| {
             Ok(match cursor.rparen()? {
                 Some(rest) => (Paren::Left, rest),
@@ -1187,23 +1189,10 @@ impl<'a> Parse<'a> for BranchHintAnnotation<'a> {
             })
         });
 
-        // Determine if the following instruction is a `if` or `br_if`
-        parser.peek::<Instruction::BrIf>()?;
-        let next_instruction = parser.parse::<Instruction>()?;
-        Ok(BranchHintAnnotation {value, next_instruction })
+        // TODO: don't store the next instruction here, it will be added later
+        Ok(BranchHintAnnotation {value: val} )
     }
 }
-
-// impl<'a> Parse<'a> for Option<BranchHintAnnotation<'a>> {
-//     fn parse(parser: Parser<'a>) -> Result<Self> {
-//         Ok(if parser.peek2::<annotation::branch_hint>()? {
-//             Some(parser.parens(|p| p.parse())?)
-//         } else {
-//             None
-//         })
-//     }
-// }
-    
     
 // impl<'a> Parse<'a> for BranchHintAnnotation<'a> {
 //     fn parse(parser: Parser<'a>) -> Result<Self> {

@@ -1045,6 +1045,11 @@ fn build_branch_hints(funcs: &[&crate::core::Func<'_>]) {
             FuncKind::Inline { expression, locals } => (expression, locals),
             _ => panic!("should only have inline functions in emission"),
         };
+
+        // TODO: iterate over the instructions
+        // Find the BranchHintAnnotation
+        // Look at the instruction following that
+        // Construct the appropriate FunctionBranchHint for each Function
     }
 }
 
@@ -1160,6 +1165,13 @@ impl Encode for Dylink0Subsection<'_> {
             Dylink0Subsection::ExportInfo(list) => list.encode(e),
             Dylink0Subsection::ImportInfo(list) => list.encode(e),
         }
+    }
+}
+
+// TODO: keep rust happy and test a bit
+impl Encode for BranchHintAnnotation {
+    fn encode(&self, e: &mut Vec<u8>) {
+        e.push(self.value.try_into().unwrap());
     }
 }
 
