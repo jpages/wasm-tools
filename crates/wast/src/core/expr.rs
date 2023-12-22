@@ -1189,7 +1189,6 @@ impl Parse<'_> for BranchHintAnnotation {
             })
         });
 
-        // TODO: don't store the next instruction here, it will be added later
         Ok(BranchHintAnnotation {value: val} )
     }
 }

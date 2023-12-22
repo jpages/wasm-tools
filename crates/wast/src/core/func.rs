@@ -56,7 +56,7 @@ impl<'a> Parse<'a> for Func<'a> {
             (parser.parse()?, FuncKind::Import(import))
         } else {
             let ty = parser.parse()?;
-            let locals = Local::parse_remainder(parser)?.into();
+            let locals: Box<[Local<'_>]> = Local::parse_remainder(parser)?.into();
             (
                 ty,
                 FuncKind::Inline {

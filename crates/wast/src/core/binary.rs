@@ -1039,18 +1039,52 @@ impl Encode for Names<'_> {
     }
 }
 
-fn build_branch_hints(funcs: &[&crate::core::Func<'_>]) {
-    for func in funcs.iter() {
-        let (expr, locals) = match &func.kind {
+fn build_branch_hints<'a>(funcs: &[&crate::core::Func<'_>]) {
+    let mut subsections: Vec<FunctionBranchHint> = Vec::new();
+    for (func_offset, func) in funcs.iter().enumerate() {
+        dbg!(func);
+        let (expr, _locals) = match &func.kind {
             FuncKind::Inline { expression, locals } => (expression, locals),
             _ => panic!("should only have inline functions in emission"),
         };
 
-        // TODO: iterate over the instructions
-        // Find the BranchHintAnnotation
-        // Look at the instruction following that
-        // Construct the appropriate FunctionBranchHint for each Function
+        let mut branch_hints: Vec<BranchHintStruct> = Vec::new();
+        for (i, el) in expr.instrs.iter().enumerate() {
+            match el {
+                Instruction::BranchHintAnnotation(bha) => {
+                    //TODO: try to determine what is the next instruction.
+                    let branch_hint = BranchHintStruct {
+                        branch_offset: i.try_into().unwrap(),
+                        reserved_byte: 1,
+                        branch_hint_value: bha.value.try_into().unwrap(),
+                    };
+
+                    branch_hints.push(branch_hint);
+                }
+                _ => {
+                }
+            }
+        }
+
+        if !branch_hints.is_empty() {
+            let function_branch_hints = FunctionBranchHint {
+                function_offset: func_offset.try_into().unwrap(),
+                hint_counts: branch_hints.len().try_into().unwrap(),
+                data: branch_hints,
+            };
+
+            subsections.push(function_branch_hints);
+        }
     }
+    println!("All branch hint structure");
+    let branch_hint = BranchHint {
+        function_count: subsections.len().try_into().unwrap(),
+        subsections: subsections,
+    };
+
+    dbg!(branch_hint);
+
+    //TODO: return branch_hint
 }
 
 
@@ -1175,7 +1209,7 @@ impl Encode for BranchHintAnnotation {
     }
 }
 
-impl Encode for BranchHint<'_> {
+impl Encode for BranchHint {
     fn encode(&self, e: &mut Vec<u8>) {
         for section in self.subsections.iter() {
             let mut tmp = Vec::new();
@@ -1185,7 +1219,7 @@ impl Encode for BranchHint<'_> {
     }
 }
 
-impl Encode for FunctionBranchHint<'_> {
+impl Encode for FunctionBranchHint {
     fn encode(&self, e: &mut Vec<u8>) {
         e.push(self.function_offset.try_into().unwrap());
         e.push(self.hint_counts.try_into().unwrap());
