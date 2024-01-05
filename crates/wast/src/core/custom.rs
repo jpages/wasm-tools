@@ -45,6 +45,7 @@ impl<'a> Parse<'a> for Custom<'a> {
             Ok(Custom::Dylink0(parser.parse()?))
         }
         else if parser.peek::<annotation::branch_hint>()? {
+            println!("Parsing of branch hint");
             Ok(Custom::BranchHint(parser.parse()?))
         } else {
             Ok(Custom::Raw(parser.parse()?))
@@ -431,16 +432,17 @@ pub struct BranchHintStruct {
     // Branch offset from the beginning of the function
     pub branch_offset: u32,
     // Reserved byte with the value `1`
-    pub reserved_byte: u8,
+    pub reserved_byte: u32,
     // Value of this branch hint:
     // 1 -> likely not taken
     // 0 -> likely taken
-    pub branch_hint_value: u8,
+    pub branch_hint_value: u32,
 }
 
 // TODO: implementation
 impl Parse<'_> for BranchHint {
     fn parse(parser: Parser<'_>) -> Result<Self> {
+        println!("impl Parse<'_> for BranchHint");
         parser.parse::<annotation::branch_hint>()?.0;
         let ret = BranchHint {
             function_count: 0,
