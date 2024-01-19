@@ -1,6 +1,19 @@
+use crate::core::Instruction;
+use crate::core::Func;
+use crate::core::BranchHintStruct;
+
 pub(crate) trait Encode {
     fn encode(&self, e: &mut Vec<u8>);
 }
+
+pub(crate) trait EncodeExpr {
+    fn encode_expr(&self, e: &mut Vec<u8>) -> Vec<(&Instruction<'_>, usize)>;
+}
+
+pub(crate) trait EncodeFunction {
+    fn encode_function(&self, e: &mut Vec<u8>) -> (&Func<'_>, Vec<BranchHintStruct>);
+}
+
 
 impl<T: Encode + ?Sized> Encode for &'_ T {
     fn encode(&self, e: &mut Vec<u8>) {
