@@ -94,7 +94,6 @@ enum Level<'a> {
     IfArm,
 }
 
-//TODO: branch hint should be associated with an If
 /// Possible states of "what is currently being parsed?" in an `if` expression.
 enum If<'a> {
     /// Only the `if` instructoin has been parsed, next thing to parse is the
@@ -150,9 +149,8 @@ impl<'a> ExpressionParser<'a> {
                         continue;
                     }
 
-                    //TODO: just a test to see if it's the right place to parse this annotation
+                    // Handle the case of a branch hint annotation
                     if parser.peek::<annotation::branch_hint>()? {
-                        println!("We are parsing a branch hint annotation");
                         let branch_hint = parser.parse::<BranchHintAnnotation>()?; 
                         self.instrs.push(Instruction::BranchHintAnnotation(branch_hint));
                         continue;
@@ -1171,51 +1169,42 @@ impl Parse<'_> for BranchHintAnnotation {
     fn parse(parser: Parser<'_>) -> Result<Self> {
         parser.parse::<annotation::branch_hint>()?;
 
-        // TODO: this should be a string
-        let val = parser.parse::<u32>()?;
-        println!("parsed value : {} ", val);
-        if val >= 2 {
-            panic!("Invalid value for Branch Hint.");
+        let hint = parser.step(|c| {
+            if let Some((i, rest)) = c.string()? {
+                return Ok((i, rest));
+            }
+            else {
+                return Err(c.error("expected a string"));
+            }
+        });
+
+        let hint_str = match hint {
+            Ok(s) => std::str::from_utf8(s),
+            Err(_) => return Err(parser.error("invalid value for branch hint")),
+        };
+
+        let val;
+        match hint_str {
+            Ok("\00") => val = 0,
+            Ok("\01") => val = 1,
+            _ => return Err(parser.error("invalid value for branch hint")),
         }
 
-        // Parse and consume the right paren
-        parser.step(|cursor| {
-            Ok(match cursor.rparen()? {
-                Some(rest) => (Paren::Left, rest),
-                None => match cursor.rparen()? {
-                    Some(rest) => (Paren::Right, rest),
-                    None => (Paren::None, cursor),
-                },
-            })
+        let paren = parser.step(|cursor| {
+            if let Some(rest) = cursor.rparen()? {
+                return Ok((Paren::Right, rest));
+            } else {
+                return Err(cursor.error("expected a )"));
+            }
         });
+
+        if paren.is_err() {
+            return Err(parser.error("missing )"));
+        }
 
         Ok(BranchHintAnnotation {value: val} )
     }
 }
-    
-// impl<'a> Parse<'a> for BranchHintAnnotation<'a> {
-//     fn parse(parser: Parser<'a>) -> Result<Self> {
-//         println!("We have a BranchHintAnnotation here\n");
-//         parser.parse::<annotation::branch_hint>()?;
-//         let value = parser.parse()?;
-
-//         // Determine if the following instruction is a `if` or `br_if`
-//         let next_instruction = parser.parse::<Instruction>()?;
-//         // match next_instruction {
-//         //     Instruction::BrIf(_) => {
-//         //         println!("BranchHint annotation with BrIf");
-//         //     }
-//         //     Instruction::If(_) => {
-//         //         println!("BranchHint annotation with If");
-//         //     },
-//         //     _ => {
-//         //         // This should not be possible
-//         //         println!("Return an error because this should not happen");
-//         //     }
-//         // Ok(BranchHintAnnotation { value, next_instruction })
-//     }
-// }
-
 
 #[derive(Debug)]
 #[allow(missing_docs)]

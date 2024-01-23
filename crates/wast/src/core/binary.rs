@@ -42,10 +42,6 @@ pub fn encode(
         }
     }
 
-    //TODO: insert branch hint section here
-    // let branch_hint_section = Custom::BranchHint(build_branch_hints(&funcs));
-    // customs.push(&branch_hint_section);
-
     let mut e = Encoder {
         wasm: Vec::new(),
         tmp: Vec::new(),
@@ -80,8 +76,7 @@ pub fn encode(
 
     // Calling a custom function because we need it for branch hinting
     // Insert the custom branch hints section
-    // Create a map Function -> its FunctionBranchHints
-    let mut func_hints = e.section_list_function(10, Code, &funcs);
+    e.section_list_function(10, Code, &funcs);
 
     e.section_list(11, Data, &data);
 
@@ -136,10 +131,8 @@ impl Encoder<'_> {
         self.custom_sections(CustomPlace::After(anchor));
     }
 
-    // Create the branch Hint section before the code section
-    // TODO: branch hint section has to be before the code section
-    fn section_list_function<'a>(&'a mut self, id: u8, anchor: CustomPlaceAnchor, list: &Vec<&'a Func<'_>>)
-    -> Vec<(&Func<'_>, Vec<BranchHintStruct>)> {
+    // Encode functions and insert the branch hint section before the code section
+    fn section_list_function<'a>(&'a mut self, id: u8, anchor: CustomPlaceAnchor, list: &Vec<&'a Func<'_>>) {
         let mut vector_func_hints: Vec<(&Func<'_>, Vec<BranchHintStruct>)> = Vec::new();
         self.custom_sections(CustomPlace::Before(anchor));
         let mut funcs_buffer: Vec<u8> = Vec::new();
@@ -157,11 +150,11 @@ impl Encoder<'_> {
                 vector_func_hints.push(func.encode_function(&mut funcs_buffer));
             }
 
-            // // Branch hints section has to be before the Code section
-            // // Build branch hints first
-            let mut branch_hint_section = Custom::BranchHint(build_branch_hints(&mut vector_func_hints));
+            // Branch hints section has to be before the Code section
+            // Build branch hints first
+            let branch_hint_section = Custom::BranchHint(build_branch_hints(&mut vector_func_hints));
 
-            // // Insert the branch hint section
+            // Insert the branch hint section
             self.section(0, &("metadata.code.branch_hint", branch_hint_section));
 
             // Finally, insert the Code section from the tmp buffer
@@ -169,8 +162,6 @@ impl Encoder<'_> {
             funcs_buffer.encode(&mut self.wasm);
         }
         self.custom_sections(CustomPlace::After(anchor));
-
-        return vector_func_hints;
     }
 }
 
@@ -728,8 +719,10 @@ impl Encode for Func<'_> {
         };
 
         locals.encode(&mut tmp);
+        expr.encode(&mut tmp);
+
         tmp.len().encode(e);
-        e.extend_from_slice(&tmp);        
+        e.extend_from_slice(&tmp);
     }
 }
 
@@ -754,7 +747,6 @@ impl EncodeExpr for Expression<'_> {
     fn encode_expr(&self, e: &mut Vec<u8>) -> Vec<(&Instruction<'_>, usize)> {
         let mut tuple_vector: Vec<(&Instruction<'_>, usize)> = Vec::new();
  
-        // TODO: get a collection with the offset as well
         for instr in self.instrs.iter() {
             instr.encode(e);
             tuple_vector.push((instr, e.len()));
@@ -1143,8 +1135,8 @@ impl Encode for Names<'_> {
 fn build_branch_hints<'a>(funcs_vector: &mut Vec<(&Func<'_>, Vec<BranchHintStruct>)>) -> BranchHint {
     let mut subsections_vec: Vec<FunctionBranchHint> = Vec::new();
 
-    for (func_offset, (func, vector)) in funcs_vector.iter_mut().enumerate() {
-        //if vector.is_empty() {
+    for (func_offset, (_func, vector)) in funcs_vector.iter_mut().enumerate() {
+        if !vector.is_empty() {
             let mut hints = Vec::new();
             hints.append(vector);
             let function_branch_hints = FunctionBranchHint {
@@ -1154,7 +1146,7 @@ fn build_branch_hints<'a>(funcs_vector: &mut Vec<(&Func<'_>, Vec<BranchHintStruc
             };
 
             subsections_vec.push(function_branch_hints);
-        //}
+        }
     }
 
     let bh = BranchHint {
