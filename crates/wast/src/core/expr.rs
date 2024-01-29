@@ -1169,24 +1169,12 @@ impl Parse<'_> for BranchHintAnnotation {
     fn parse(parser: Parser<'_>) -> Result<Self> {
         parser.parse::<annotation::branch_hint>()?;
 
-        let hint = parser.step(|c| {
-            if let Some((i, rest)) = c.string()? {
-                return Ok((i, rest));
-            }
-            else {
-                return Err(c.error("expected a string"));
-            }
-        });
-
-        let hint_str = match hint {
-            Ok(s) => std::str::from_utf8(s),
-            Err(_) => return Err(parser.error("invalid value for branch hint")),
-        };
+        let hint = parser.parse::<String>()?;
 
         let val;
-        match hint_str {
-            Ok("\00") => val = 0,
-            Ok("\01") => val = 1,
+        match hint.as_bytes() {
+            [0] => val = 0,
+            [1] => val = 1,
             _ => return Err(parser.error("invalid value for branch hint")),
         }
 

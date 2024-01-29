@@ -134,6 +134,7 @@ impl Encoder<'_> {
     // Encode functions and insert the branch hint section before the code section
     fn section_list_function<'a>(&'a mut self, id: u8, anchor: CustomPlaceAnchor, list: &Vec<&'a Func<'_>>) {
         let mut vector_func_hints: Vec<(&Func<'_>, Vec<BranchHintStruct>)> = Vec::new();
+        let mut total_hints = 0;
         self.custom_sections(CustomPlace::Before(anchor));
         let mut funcs_buffer: Vec<u8> = Vec::new();
 
@@ -146,16 +147,19 @@ impl Encoder<'_> {
 
             list.len().encode(&mut funcs_buffer);
             for func in list.iter() {
-                //TODO: handle the case where we have 0 hint
-                vector_func_hints.push(func.encode_function(&mut funcs_buffer));
+                let hints = func.encode_function(&mut funcs_buffer);
+                total_hints += hints.1.len();
+                vector_func_hints.push(hints);
             }
 
-            // Branch hints section has to be before the Code section
-            // Build branch hints first
-            let branch_hint_section = Custom::BranchHint(build_branch_hints(&mut vector_func_hints));
+            // Branch hints section has to be inserted before the Code section
+            // Insert the section only if we have some hints
+            if total_hints > 0 {
+                let branch_hint_section = Custom::BranchHint(build_branch_hints(&mut vector_func_hints));
 
-            // Insert the branch hint section
-            self.section(0, &("metadata.code.branch_hint", branch_hint_section));
+                // Insert the custom branch hint section
+                self.section(0, &("metadata.code.branch_hint", branch_hint_section));
+            }
 
             // Finally, insert the Code section from the tmp buffer
             self.wasm.push(id);
@@ -667,11 +671,9 @@ impl Encode for Data<'_> {
     }
 }
 
-//TODO: handle the case of branch hints here.
+// Handle the case of branch hints here.
 // - Iterate over the instructions and get the hints
-// - Create the vector of branch hints
-// - Return it and store it somewhere
-// TODO: this function might have 0 branch hints, return an option
+// - Create the vector of branch hints and return it while encoding expressions
 impl EncodeFunction for Func<'_> {
     fn encode_function(&self, e: &mut Vec<u8>) -> (&Func<'_>, Vec<BranchHintStruct>) {
         assert!(self.exports.names.is_empty());
@@ -688,6 +690,8 @@ impl EncodeFunction for Func<'_> {
 
         // Use the tuple collection to build the branch hints collection
         let mut branch_hints: Vec<BranchHintStruct> = Vec::new();
+        // Previous Instruction during iteration
+        let mut previous : Option<&Instruction> = None;
         for (i, el) in tuple_vector.iter() {
             match i {
                 Instruction::BranchHintAnnotation(bha) => {
@@ -697,12 +701,27 @@ impl EncodeFunction for Func<'_> {
                         branch_hint_value: bha.value.try_into().unwrap(),
                     };
 
-                    //TODO: get the offset of the following if/br_if
                     branch_hints.push(bh);
                 }
                 _ => {
                 }
             }
+            if previous.is_some() {
+                match previous {
+                    Some(Instruction::BranchHintAnnotation(_)) => {
+                        // If previous was a branch hint annotation, check that
+                        // the current instruction is indeed a `br_if` or a `if`
+                        match i {
+                            Instruction::BrIf(_) | Instruction::If(_) => {},
+                            _ => {
+                                panic!("Branch hint annotations must be followed by `br_if` or `if` instructions");
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            previous = Some(*i);
         }
 
         return (self, branch_hints);

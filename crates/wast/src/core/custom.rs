@@ -409,7 +409,6 @@ pub struct BranchHint {
     pub function_count: u32,
 
     // Contains a vector per function with branch hints
-    // This vector contains the branch hints
     pub subsections: Vec<FunctionBranchHint>,
 }
 
@@ -431,37 +430,21 @@ pub struct FunctionBranchHint {
 pub struct BranchHintStruct {
     // Branch offset from the beginning of the function
     pub branch_offset: u32,
-    // Reserved byte with the value `1`
+    // Reserved space, containing the value `1`
     pub reserved_byte: u32,
     // Value of this branch hint:
-    // 1 -> likely not taken
-    // 0 -> likely taken
+    // 0 -> likely not taken
+    // 1 -> likely taken
     pub branch_hint_value: u32,
 }
 
-// TODO: implementation
+// There is no parsing here, see BranchHintAnnotation
 impl Parse<'_> for BranchHint {
-    fn parse(parser: Parser<'_>) -> Result<Self> {
-        println!("impl Parse<'_> for BranchHint");
-        parser.parse::<annotation::branch_hint>()?.0;
+    fn parse(_parser: Parser<'_>) -> Result<Self> {
         let ret = BranchHint {
             function_count: 0,
             subsections: Vec::new(),
         };
-        // while !parser.is_empty() {
-        //     parser.parens(|p| ret.parse_next(p))?;
-        // }
         Ok(ret)
     }
 }
-
-//TODO: implementation of the full section parsing
-// impl<'a> BranchHint<'a> {
-//     fn parse_next(&mut self, parser: Parser<'a>) -> Result<()> {
-//         let mut ret = BranchHint {
-//             function_count: 0,
-//             subsections: Vec::new(),
-//         };
-//         Ok()
-//     }
-// }
